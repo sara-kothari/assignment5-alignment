@@ -25,9 +25,9 @@ import shlex
 import subprocess
 
 import modal
+from pathlib import Path
 
-
-SUNET_ID = "TODO"  # NOTE: modal_utils.py should remain unchanged other than adding your SUNET_ID.
+SUNET_ID = "sarako"  # NOTE: modal_utils.py should remain unchanged other than adding your SUNET_ID.
 if SUNET_ID == "TODO":
     raise ValueError("Please set SUNET_ID in cs336_alignment/modal_utils.py before running Modal jobs.")
 
@@ -39,7 +39,12 @@ RUN_TIMEOUT_SECONDS = 60 * 60
 WANDB_SECRET_NAME = "wandb"
 
 app = modal.App(f"cs336-a5-rlvr-{SUNET_ID}")
+user_volume = modal.Volume.from_name(f"alignemnt-{SUNET_ID}", create_if_missing=True, version=2)
 wandb_secret = modal.Secret.from_name(WANDB_SECRET_NAME)
+(DATA_PATH := Path("results")).mkdir(exist_ok=True)
+VOLUME_MOUNTS = {
+    f"/root/{DATA_PATH}": user_volume,
+}
 
 image = (
     modal.Image.from_registry(
@@ -69,7 +74,9 @@ def quote_command(command: list[str]) -> str:
     timeout=RUN_TIMEOUT_SECONDS,
     max_containers=MAX_CONTAINERS,
     secrets=[wandb_secret],
+    volumes=VOLUME_MOUNTS,
 )
+
 def run_command(command: list[str]) -> str:
     command_str = quote_command(command)
     print(command_str, flush=True)
@@ -98,3 +105,4 @@ def submit_commands(commands: list[list[str]]) -> None:
     if failures:
         print(f"{len(failures)} of {len(commands)} Modal jobs failed.", flush=True)
         raise SystemExit(1)
+
